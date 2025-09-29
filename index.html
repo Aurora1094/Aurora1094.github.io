@@ -100,7 +100,8 @@
     // 说明：尽量只改这段 DATA；其余代码无需动。
     // 字段：title, date(YYYY-MM-DD), tags([..]), content(支持简短 Markdown 片段*), links([{text, url}])
     // * 支持最基础的 **粗体**、`行内代码`、换行
-   const DATA = [
+   const DATA = 
+     [
   {
     title: "搭好极简学习记录页",
     date: "2025-09-29",
@@ -122,7 +123,7 @@
 ];
       // 在这里继续追加：
       // { title: "读论文: xxx", date: "2025-10-02", tags: ["paper"], content: "要点1\n要点2", links: [{text: "arXiv", url: "https://arxiv.org/abs/..."}] },
-    ];
+    
 
     // === 2) 渲染逻辑 ===
     const $ = (s, el=document)=>el.querySelector(s);
