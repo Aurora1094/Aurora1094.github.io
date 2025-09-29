@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Eugene 学习记录</title>
+  <meta name="description" content="Eugene 的极简学习记录页面" />
+  <meta name="color-scheme" content="light dark" />
+  <style>
+    :root{
+      --bg: #ffffff;
+      --fg: #111111;
+      --muted: #6b7280;
+      --card: #f8fafc;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --code: #111827;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root{
+        --bg: #0b0e14;
+        --fg: #e5e7eb;
+        --muted: #9ca3af;
+        --card: #11151d;
+        --border: #1f2937;
+        --accent: #60a5fa;
+        --code: #f9fafb;
+      }
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .container{max-width:860px;margin:0 auto;padding:24px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+    .title{font-size:clamp(20px,4vw,28px);font-weight:700;letter-spacing:.2px}
+    .muted{color:var(--muted)}
+    .toolbar{display:flex;flex-wrap:wrap;gap:10px}
+    input[type="search"], select, button, .tag{border:1px solid var(--border);background:var(--card);color:var(--fg);padding:8px 10px;border-radius:10px}
+    input[type="search"]{min-width:220px}
+    .tag{cursor:pointer;user-select:none}
+    .tag.active{outline:2px solid var(--accent)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+    .grid{display:grid;gap:14px}
+    .entry{display:grid;gap:6px}
+    .entry h3{margin:0;font-size:18px}
+    .entry .meta{font-size:13px}
+    .entry .content{white-space:pre-wrap}
+    footer{margin:40px 0;color:var(--muted);font-size:14px}
+    details{border:1px dashed var(--border);border-radius:12px;padding:10px 12px;background:transparent}
+    summary{cursor:pointer;font-weight:600}
+    .empty{border:1px dashed var(--border);border-radius:12px;padding:24px;text-align:center;color:var(--muted)}
+    code{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:2px 6px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;color:var(--code)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <div class="title">Hack Multimodal 学习记录</div>
+        <div class="muted">by Eugene · 轻量、无框架、单文件</div>
+      </div>
+      <nav class="toolbar">
+        <input id="q" type="search" placeholder="搜索：标题/内容/标签" aria-label="搜索" />
+        <select id="sort">
+          <option value="date-desc">按时间（新→旧）</option>
+          <option value="date-asc">按时间（旧→新）</option>
+          <option value="title-asc">按标题（A→Z）</option>
+        </select>
+        <button id="clear">清空筛选</button>
+      </nav>
+    </header>
+
+    <section class="grid" id="entries">
+      <!-- ✨ 添加你的学习记录：在下面 JSON 中追加对象。push 新对象即可。 -->
+    </section>
+
+    <template id="entry-tpl">
+      <article class="card entry" data-tags="">
+        <h3></h3>
+        <div class="meta muted"></div>
+        <div class="content"></div>
+        <details>
+          <summary>原始链接 / 附加信息</summary>
+          <div class="links"></div>
+        </details>
+      </article>
+    </template>
+
+    <div class="empty" id="empty" hidden>没有匹配的记录。试试清空筛选或更换关键词。</div>
+
+    <footer>
+      <div>© <span id="year"></span> Eugene · <a href="https://github.com/" target="_blank" rel="noreferrer">GitHub Pages</a>
+      · 单文件版（index.html）</div>
+    </footer>
+  </div>
+
+  <script>
+    // === 1) 数据：在此处维护你的学习记录 ===
+    // 说明：尽量只改这段 DATA；其余代码无需动。
+    // 字段：title, date(YYYY-MM-DD), tags([..]), content(支持简短 Markdown 片段*), links([{text, url}])
+    // * 支持最基础的 **粗体**、`行内代码`、换行
+    const DATA = [
+      {
+        title: "搭好极简学习记录页",
+        date: "2025-09-29",
+        tags: ["setup", "log"],
+        content: "创建了一个无依赖的单文件页面，用于记录 Hack Multimodal 学习。支持搜索、排序、标签筛选。",
+        links: [
+          { text: "本页源码(本地)", url: "#" }
+        ]
+      },
+      // 在这里继续追加：
+      // { title: "读论文: xxx", date: "2025-10-02", tags: ["paper"], content: "要点1\n要点2", links: [{text: "arXiv", url: "https://arxiv.org/abs/..."}] },
+    ];
+
+    // === 2) 渲染逻辑 ===
+    const $ = (s, el=document)=>el.querySelector(s);
+    const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
+
+    const entriesEl = $("#entries");
+    const emptyEl = $("#empty");
+    const tpl = $("#entry-tpl");
+    const q = $("#q");
+    const sortSel = $("#sort");
+    const clearBtn = $("#clear");
+    $("#year").textContent = new Date().getFullYear();
+
+    function escapeHtml(s){
+      return s.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+    }
+    function mdLite(s){
+      // 粗体 **text** 与行内代码 `code`
+      return escapeHtml(s)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`(.+?)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br/>');
+    }
+
+    function render(list){
+      entriesEl.innerHTML = "";
+      if(!list.length){ emptyEl.hidden = false; return; }
+      emptyEl.hidden = true;
+      for(const item of list){
+        const node = tpl.content.cloneNode(true);
+        const article = $("article", node);
+        const titleEl = $("h3", node);
+        const metaEl = $(".meta", node);
+        const contentEl = $(".content", node);
+        const linksEl = $(".links", node);
+
+        titleEl.textContent = item.title;
+        metaEl.textContent = `${item.date} · 标签：${(item.tags||[]).join(', ') || '无'}`;
+        contentEl.innerHTML = mdLite(item.content||"");
+        article.dataset.tags = (item.tags||[]).join(",");
+        linksEl.innerHTML = (item.links||[]).map(l=>`<a href="${l.url}" target="_blank" rel="noreferrer">${escapeHtml(l.text)}</a>`).join(" · ");
+
+        entriesEl.appendChild(node);
+      }
+    }
+
+    function filterAndSort(){
+      const kw = q.value.trim().toLowerCase();
+      const sort = sortSel.value;
+      let list = DATA.filter(it=>{
+        const text = `${it.title} ${it.content} ${(it.tags||[]).join(' ')}`.toLowerCase();
+        return !kw || text.includes(kw);
+      });
+      list.sort((a,b)=>{
+        if(sort === 'date-desc') return b.date.localeCompare(a.date);
+        if(sort === 'date-asc') return a.date.localeCompare(b.date);
+        if(sort === 'title-asc') return a.title.localeCompare(b.title, 'zh');
+        return 0;
+      });
+      render(list);
+    }
+
+    q.addEventListener('input', filterAndSort);
+    sortSel.addEventListener('change', filterAndSort);
+    clearBtn.addEventListener('click', ()=>{ q.value=''; sortSel.value='date-desc'; filterAndSort(); });
+
+    // 首次渲染
+    filterAndSort();
+
+    // === 3) 可选：支持 URL 中 ?q=keyword 的预筛选 ===
+    const params = new URLSearchParams(location.search);
+    if(params.get('q')){ q.value = params.get('q'); filterAndSort(); }
+  </script>
+</body>
+</html>
